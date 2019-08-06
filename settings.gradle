@@ -1,1 +1,2 @@
-include ':app', ':wrapper', ':phone_server'
+include ':app', ':wrapper', ':phone_server', ':expleocr', ':chart'
+//, ':zxing'

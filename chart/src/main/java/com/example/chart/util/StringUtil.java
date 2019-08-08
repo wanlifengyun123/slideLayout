@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.example.chart.util;
 
 import android.text.SpannableString;
 import android.text.Spanned;

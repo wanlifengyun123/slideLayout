@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.example.chart.multi;
 
 import java.io.Serializable;
 import java.util.List;

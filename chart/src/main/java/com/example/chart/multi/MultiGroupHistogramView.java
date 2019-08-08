@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.example.chart.multi;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -21,6 +21,10 @@ import android.widget.Scroller;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.chart.util.DisplayUtil;
+import com.example.chart.R;
+import com.example.chart.util.StringUtil;
+
 import java.util.List;
 
 public class MultiGroupHistogramView extends View {
@@ -40,6 +44,7 @@ public class MultiGroupHistogramView extends View {
     private int histogramValueDecimalCount;
     private int histogramHistogramWidth;
     private int chartPaddingTop;
+    // 每个直方图在x轴的偏移量
     private int histogramPaddingStart;
     private int histogramPaddingEnd;
     // 各组名称到X轴的距离

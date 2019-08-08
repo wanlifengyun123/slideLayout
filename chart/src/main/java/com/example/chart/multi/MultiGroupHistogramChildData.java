@@ -1,4 +1,4 @@
-package com.example.chart;
+package com.example.chart.multi;
 
 /**
  * Created by cuiyan on 2018/5/4.

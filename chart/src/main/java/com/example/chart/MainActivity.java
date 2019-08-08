@@ -1,18 +1,14 @@
 package com.example.chart;
 
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.graphics.Color;
-import android.os.Bundle;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import com.example.chart.util.DisplayUtil;
 
 public class MainActivity extends AppCompatActivity {
-
-    private MultiGroupHistogramView multiGroupHistogramView;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -20,38 +16,25 @@ public class MainActivity extends AppCompatActivity {
         DisplayUtil.init(this);
         setContentView(R.layout.activity_main);
 
-        multiGroupHistogramView = findViewById(R.id.multiGroupHistogramView);
-
-        initMultiGroupHistogramView();
-
     }
 
-    private void initMultiGroupHistogramView() {
-        Random random = new Random();
-        int groupSize = random.nextInt(10) + 10;
-        List<MultiGroupHistogramGroupData> groupDataList = new ArrayList<>();
-        for (int i = 0; i < groupSize; i++) {
-            List<MultiGroupHistogramChildData> childDataList = new ArrayList<>();
-            MultiGroupHistogramGroupData groupData = new MultiGroupHistogramGroupData();
-            groupData.setGroupName("第" + (i + 1) + "组");
+    public void multiClick(View view) {
+        startActivity(new Intent(MainActivity.this, MultiGroupActivity.class));
+    }
 
-            MultiGroupHistogramChildData childData1 = new MultiGroupHistogramChildData();
-            childData1.setSuffix("%");
-            childData1.setValue(random.nextInt(50) + 51);
-            childDataList.add(childData1);
+    public void lineClick(View view) {
+        startActivity(new Intent(MainActivity.this, LineChartActivity.class));
+    }
 
-            MultiGroupHistogramChildData childData2 = new MultiGroupHistogramChildData();
-            childData2.setSuffix("分");
-            childData2.setValue(random.nextInt(50) + 51);
-            childDataList.add(childData2);
-            groupData.setChildDataList(childDataList);
-            groupDataList.add(groupData);
-        }
-        multiGroupHistogramView.setDataList(groupDataList);
+    public void graphClick(View view){
+        startActivity(new Intent(MainActivity.this, GraphActivity.class));
+    }
 
-        int[] color1 = new int[]{Color.parseColor("#FFD100"), Color.parseColor("#FF3300")};
+    public void tableClick(View view){
+        startActivity(new Intent(MainActivity.this, TableActivity.class));
+    }
 
-        int[] color2 = new int[]{Color.parseColor("#1DB890"), Color.parseColor("#4576F9")};
-        multiGroupHistogramView.setHistogramColor(color1, color2);
+    public void lineGraphicClick(View view){
+        startActivity(new Intent(MainActivity.this, LineGraphicActivity.class));
     }
 }

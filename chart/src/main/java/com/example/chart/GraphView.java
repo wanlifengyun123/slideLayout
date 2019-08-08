@@ -41,8 +41,6 @@ public class GraphView extends View {
     private int xPaddingPoint; // x轴左右两边的偏移量
     private int yPaddingPoint; // y轴上下两边的偏移量
 
-    private int mRectWidth; // 矩形柱体的宽度
-
     private Path mCubicPath; // 曲线图路径对象
     private List<PointF> mPointPathList; // 记录柱状图的定点坐标
     private List<PointF> fList; // 记录曲线图的定点坐标
@@ -53,6 +51,9 @@ public class GraphView extends View {
     private float mCurrentValue;
 
     private boolean isInitialized = false;
+
+    private int xSize = 15;
+    private int ySize = 5;
 
     public GraphView(Context context) {
         this(context, null);
@@ -104,7 +105,6 @@ public class GraphView extends View {
         fList = new ArrayList<>();
         xPaddingPoint = DisplayUtil.dp2px(20);
         yPaddingPoint = DisplayUtil.dp2px(20);
-        mRectWidth = DisplayUtil.dp2px(15);
     }
 
     private void initAnim() {
@@ -153,66 +153,57 @@ public class GraphView extends View {
         if (mWidth == 0 || mHeight == 0) {
             return;
         }
-        float yEndPoint = mHeight - yPaddingPoint;
         float xEndPoint = mWidth - xPaddingPoint;
+        float yEndPoint = mHeight - yPaddingPoint;
+
+        int minHSpace = (mHeight - 2 * yPaddingPoint) / (ySize + 1);
+        int minWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
+
+
         // 画横线
-        canvas.drawLine(xPaddingPoint, yEndPoint, xEndPoint, yEndPoint, mLinePaint);
+        int lineYSize = ySize + 2;
+        for (int i = 0; i < lineYSize; i++) {
+            canvas.drawLine(xPaddingPoint, yPaddingPoint + minHSpace * i, xEndPoint, yPaddingPoint + minHSpace * i, mLinePaint);
+            // 显示文字横线坐标
+            String yName = String.valueOf(i);
+            canvas.drawText(yName, (float) (xPaddingPoint * 0.5), yEndPoint - minHSpace * i, mTextPaint);
+        }
+
         // 画竖线
-        canvas.drawLine(xPaddingPoint, yEndPoint, xPaddingPoint, yPaddingPoint, mLinePaint);
-        // 显示竖坐标文字
-        for (int i = 0; i < 5; i++) {
+        int lineXSize = xSize + 2;
+        for (int i = 0; i < lineXSize; i++) {
+            canvas.drawLine(xPaddingPoint + minWSpace * i, yPaddingPoint, xPaddingPoint + minWSpace * i, yEndPoint, mLinePaint);
+            // 显示文字竖线坐标
             String yName = String.valueOf(i);
-            canvas.drawText(yName, (float) (xPaddingPoint * 0.5), yEndPoint - (yEndPoint / 5) * i, mTextPaint);
-            canvas.drawLine(xPaddingPoint, yEndPoint - (yEndPoint / 5) * i, xEndPoint, yEndPoint - (yEndPoint / 5) * i, mLinePaint);
+            canvas.drawText(yName, xPaddingPoint + minWSpace * i, yEndPoint + (float) (yPaddingPoint * 0.5), mTextPaint);
         }
-        // 显示横坐标文字,
-        float startX = (float) (xPaddingPoint + mRectWidth); //显示开始的x坐标, 开始位置距y轴mRectWidth
-        float offsetX = (float) (mRectWidth * 0.5); // 文字相对于柱状图的中心位置偏移量
-        for (int i = 0; i < 15; i++) {
-            String yName = String.valueOf(i);
-            if (i == 0) {
-                // 第一个坐标位于 开始坐标 +  xPaddingPoint的一半
-                canvas.drawText(yName, startX + offsetX, yEndPoint + (float) (yPaddingPoint * 0.5), mTextPaint);
-            } else {
-                canvas.drawText(yName, startX + offsetX + (xEndPoint / 15) * i, yEndPoint + (float) (yPaddingPoint * 0.5), mTextPaint);
-            }
-        }
+
+        float offsetX = (float) (xPaddingPoint + minWSpace * 0.75);
         // 画柱状图
         if (!isInitialized) {
             @SuppressLint("DrawAllocation")
             Random random = new Random();
             mPointPathList.clear();
-            for (int i = 0; i < 15; i++) {
+            for (int i = 0; i < xSize; i++) {
                 int randomNumber = random.nextInt((mHeight - 2 * yPaddingPoint));
-                if (i == 0) {
-                    mRectF.left = startX;
-                } else {
-                    mRectF.left = startX + (xEndPoint / 15) * i;
-                }
-                mRectF.right = mRectF.left + mRectWidth;
+                mRectF.left = offsetX + minWSpace * i;
+                mRectF.right = (float) (mRectF.left + minWSpace * 0.5);
                 mRectF.top = yEndPoint - randomNumber;
                 mRectF.bottom = yEndPoint;
                 canvas.drawRect(mRectF, mRectPaint);
                 // 取圆柱体的x中心点
-                mPointPathList.add(new PointF((float) (mRectF.left + mRectWidth * 0.5), mRectF.top));
+                mPointPathList.add(new PointF((float) (mRectF.left + minWSpace * 0.25), mRectF.top));
             }
             isInitialized = true;
         } else {
             for (int i = 0; i < mPointPathList.size(); i++) {
-                if (i == 0) {
-                    mRectF.left = startX;
-                } else {
-                    mRectF.left = startX + (xEndPoint / 15) * i;
-                }
-                mRectF.left = startX + (xEndPoint / 15) * i;
-                mRectF.right = mRectF.left + mRectWidth;
-                // 因添加原点位置， 所以每次 i+1
+                mRectF.left = offsetX + minWSpace * i;
+                mRectF.right = (float) (mRectF.left + minWSpace * 0.5);
                 mRectF.top = yEndPoint - mCurrentValue * (yEndPoint - mPointPathList.get(i).y);
                 mRectF.bottom = yEndPoint;
                 canvas.drawRect(mRectF, mRectPaint);
             }
         }
-
         // 画二阶贝塞尔曲线
         mCubicPath.reset();
         mDstPath.reset();
@@ -221,10 +212,9 @@ public class GraphView extends View {
         PointF pointF = new PointF(xPaddingPoint, yEndPoint);
         fList.add(pointF);
         fList.addAll(mPointPathList);
+        PointF endPointF = new PointF(xEndPoint, yEndPoint);
+        fList.add(endPointF);
         cubicTo(true);
-        mPathPaint.setStyle(Paint.Style.FILL);
-        mCubicPath.lineTo(fList.get(fList.size() - 1).x, yEndPoint);
-        mCubicPath.close();
         drawCubicTo(canvas, true);
     }
 

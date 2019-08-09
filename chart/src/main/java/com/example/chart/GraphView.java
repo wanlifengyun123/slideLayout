@@ -269,11 +269,12 @@ public class GraphView extends View {
         }
 
         int minHSpace = (mHeight - 2 * yPaddingPoint) / (ySize + 1);
+        int minWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
         if(!isCustMinWSpace){
-            mMinWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
+            mMinWSpace = minWSpace;
         } else {
-            if(mMinWSpace < (mWidth - 2 * xPaddingPoint) / (xSize + 1)){
-                mMinWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
+            if(mMinWSpace < minWSpace){
+                mMinWSpace = minWSpace;
             }
         }
         mCanvasWidth = mMinWSpace * (xSize + 1) + 2 * xPaddingPoint;

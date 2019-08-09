@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class SimpleAnimationActivity extends AppCompatActivity {
+public class RadarChartActivity extends AppCompatActivity {
 
     // 数据最大数
     private int DATA_MAX = 4;

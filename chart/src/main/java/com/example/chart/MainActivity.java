@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         startActivity(new Intent(MainActivity.this, TableActivity.class));
     }
 
-    public void lineGraphicClick(View view){
-        startActivity(new Intent(MainActivity.this, SimpleAnimationActivity.class));
+    public void radarChartClick(View view){
+        startActivity(new Intent(MainActivity.this, RadarChartActivity.class));
     }
 }

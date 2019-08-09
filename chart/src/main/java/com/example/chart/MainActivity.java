@@ -35,6 +35,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void lineGraphicClick(View view){
-        startActivity(new Intent(MainActivity.this, LineGraphicActivity.class));
+        startActivity(new Intent(MainActivity.this, SimpleAnimationActivity.class));
     }
 }

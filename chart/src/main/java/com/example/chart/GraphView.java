@@ -271,6 +271,10 @@ public class GraphView extends View {
         int minHSpace = (mHeight - 2 * yPaddingPoint) / (ySize + 1);
         if(!isCustMinWSpace){
             mMinWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
+        } else {
+            if(mMinWSpace < (mWidth - 2 * xPaddingPoint) / (xSize + 1)){
+                mMinWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
+            }
         }
         mCanvasWidth = mMinWSpace * (xSize + 1) + 2 * xPaddingPoint;
         float xEndPoint = mCanvasWidth - xPaddingPoint;
@@ -324,7 +328,7 @@ public class GraphView extends View {
                 canvas.drawRect(mRectF, mRectPaint);
 
                 // 显示文字竖线坐标
-                float p = (top * 100) / (float) (mHeight - 2 * yPaddingPoint);
+                float p = (mCurrentValue * top * 100) / (float) (mHeight - 2 * yPaddingPoint);
                 String yName = Math.round(p) + "%";
                 canvas.drawText(yName, xPaddingPoint + mMinWSpace * (i + 1), mRectF.top - (float) (yPaddingPoint * 0.5), mTextPaint);
                 // 取圆柱体的x中心点

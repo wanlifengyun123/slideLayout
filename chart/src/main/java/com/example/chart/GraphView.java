@@ -13,8 +13,12 @@ import android.graphics.PathMeasure;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.Scroller;
 
 import androidx.annotation.Nullable;
 
@@ -50,10 +54,23 @@ public class GraphView extends View {
     private ValueAnimator mValueAnimator;
     private float mCurrentValue;
 
-    private boolean isInitialized = false;
+    private int mCanvasWidth; // 画布的实际宽度
+    private int mMinWSpace; // 横坐标最小间距
+    private boolean isInitialized = false; // 是否初始化坐标完成
+    private boolean isCustMinWSpace; // 是否自定义最小宽度
+    private boolean isBezierLine = true; // 是否画曲线还是直线图
+    private boolean isPlayAnim; // 是否开启动画
+
+    // 滑动相关
+    private Scroller mScroller;
+    private int mMinimumVelocity;
+    private int mMaximumVelocity;
+    private VelocityTracker velocityTracker;
+    private FlingRunnable mFling;
 
     private int xSize = 15;
-    private int ySize = 5;
+    private int ySize = 9;
+
 
     public GraphView(Context context) {
         this(context, null);
@@ -70,6 +87,11 @@ public class GraphView extends View {
         mCubicPath = new Path();
         mDstPath = new Path();
         mPathMeasure = new PathMeasure();
+        mScroller = new Scroller(context, null, false);
+        mFling = new FlingRunnable();
+        ViewConfiguration configuration = ViewConfiguration.get(getContext());
+        mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
+        mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
         initPaint();
         initData();
         initAnim();
@@ -133,7 +155,22 @@ public class GraphView extends View {
         });
     }
 
-    public void start() {
+    public void toggleSpace(int space){
+        isCustMinWSpace = !isCustMinWSpace;
+        if(isCustMinWSpace){
+            mMinWSpace = space;
+        }
+        isInitialized = false;
+        toggleAnim();
+    }
+
+    public void toggleBezierLine() {
+        isBezierLine = !isBezierLine;
+        toggleAnim();
+    }
+
+    public void toggleAnim() {
+        isPlayAnim = true;
         if (mValueAnimator != null) {
             mValueAnimator.start();
         }
@@ -142,8 +179,85 @@ public class GraphView extends View {
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        mWidth = getWidth();
         mHeight = getHeight();
+        mWidth = getWidth();
+    }
+
+    private float lastX;
+
+    @SuppressLint("ClickableViewAccessibility")
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // 当数据的长度不足以滑动时，不做滑动处理
+        if (mCanvasWidth < mWidth) {
+            return true;
+        }
+        initVelocityTrackerIfNotExists();
+        velocityTracker.addMovement(event);
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN: {
+                if (!mScroller.isFinished()) {
+                    mScroller.abortAnimation();
+                }
+                lastX = event.getX();
+                return true;
+            }
+            case MotionEvent.ACTION_MOVE: {
+                float curX = event.getX();
+                int deltaX = (int) (lastX - curX);
+                // 滑动处理
+                if (getScrollX() + deltaX < 0) {
+                    scrollTo(0, 0);
+                    return true;
+                } else if (getScrollX() + deltaX > mCanvasWidth - mWidth) {
+                    scrollTo(mCanvasWidth - mWidth, 0);
+                    return true;
+                }
+                scrollBy(deltaX, 0);
+                lastX = curX;
+                break;
+            }
+            case MotionEvent.ACTION_UP: {
+                // 计算当前速度， 1000表示每秒像素数等
+                velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+                // 获取横向速度
+                int velocityX = (int) velocityTracker.getXVelocity();
+                // 速度要大于最小的速度值，才开始滑动
+                if (Math.abs(velocityX) > mMinimumVelocity) {
+                    int initX = getScrollX();
+                    int maxX = mCanvasWidth - mWidth;
+                    if (maxX > 0) {
+                        // 开始 fling
+//                        mScroller.fling(initX, 0, -velocityX,
+//                                0, 0, maxX, 0, 0);
+                        mFling.start(initX, velocityX, maxX);
+                    }
+                }
+                recycleVelocityTracker();
+                break;
+            }
+        }
+        return true;
+    }
+
+    private void initVelocityTrackerIfNotExists() {
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
+        }
+    }
+
+    private void recycleVelocityTracker() {
+        if (velocityTracker != null) {
+            velocityTracker.recycle();
+            velocityTracker = null;
+        }
+    }
+
+    @Override
+    public void computeScroll() {
+        if (mScroller.computeScrollOffset()) {
+            scrollTo(mScroller.getCurrX(), 0);
+        }
     }
 
     @SuppressLint("DrawAllocation")
@@ -153,12 +267,14 @@ public class GraphView extends View {
         if (mWidth == 0 || mHeight == 0) {
             return;
         }
-        float xEndPoint = mWidth - xPaddingPoint;
-        float yEndPoint = mHeight - yPaddingPoint;
 
         int minHSpace = (mHeight - 2 * yPaddingPoint) / (ySize + 1);
-        int minWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
-
+        if(!isCustMinWSpace){
+            mMinWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
+        }
+        mCanvasWidth = mMinWSpace * (xSize + 1) + 2 * xPaddingPoint;
+        float xEndPoint = mCanvasWidth - xPaddingPoint;
+        float yEndPoint = mHeight - yPaddingPoint;
 
         // 画横线
         int lineYSize = ySize + 2;
@@ -171,39 +287,50 @@ public class GraphView extends View {
 
         // 画竖线
         int lineXSize = xSize + 2;
+        if (lineXSize * mMinWSpace < xEndPoint) {
+            lineXSize = (int) (xEndPoint / mMinWSpace);
+        }
         for (int i = 0; i < lineXSize; i++) {
-            canvas.drawLine(xPaddingPoint + minWSpace * i, yPaddingPoint, xPaddingPoint + minWSpace * i, yEndPoint, mLinePaint);
+            canvas.drawLine(xPaddingPoint + mMinWSpace * i, yPaddingPoint, xPaddingPoint + mMinWSpace * i, yEndPoint, mLinePaint);
             // 显示文字竖线坐标
             String yName = String.valueOf(i);
-            canvas.drawText(yName, xPaddingPoint + minWSpace * i, yEndPoint + (float) (yPaddingPoint * 0.5), mTextPaint);
+            canvas.drawText(yName, xPaddingPoint + mMinWSpace * i, yEndPoint + (float) (yPaddingPoint * 0.5), mTextPaint);
         }
 
-        float offsetX = (float) (xPaddingPoint + minWSpace * 0.75);
+        float offsetX = (float) (xPaddingPoint + mMinWSpace * 0.75);
         // 画柱状图
         if (!isInitialized) {
+            mPointPathList.clear();
             @SuppressLint("DrawAllocation")
             Random random = new Random();
-            mPointPathList.clear();
             for (int i = 0; i < xSize; i++) {
                 int randomNumber = random.nextInt((mHeight - 2 * yPaddingPoint));
-                mRectF.left = offsetX + minWSpace * i;
-                mRectF.right = (float) (mRectF.left + minWSpace * 0.5);
+                mRectF.left = offsetX + mMinWSpace * i;
+                mRectF.right = (float) (mRectF.left + mMinWSpace * 0.5);
                 mRectF.top = yEndPoint - randomNumber;
                 mRectF.bottom = yEndPoint;
-                canvas.drawRect(mRectF, mRectPaint);
+                //canvas.drawRect(mRectF, mRectPaint);
                 // 取圆柱体的x中心点
-                mPointPathList.add(new PointF((float) (mRectF.left + minWSpace * 0.25), mRectF.top));
+                mPointPathList.add(new PointF((float) (mRectF.left + mMinWSpace * 0.25), mRectF.top));
             }
             isInitialized = true;
         } else {
             for (int i = 0; i < mPointPathList.size(); i++) {
-                mRectF.left = offsetX + minWSpace * i;
-                mRectF.right = (float) (mRectF.left + minWSpace * 0.5);
-                mRectF.top = yEndPoint - mCurrentValue * (yEndPoint - mPointPathList.get(i).y);
+                float top = (yEndPoint - mPointPathList.get(i).y);
+                mRectF.left = offsetX + mMinWSpace * i;
+                mRectF.right = (float) (mRectF.left + mMinWSpace * 0.5);
+                mRectF.top = yEndPoint - mCurrentValue * top;
                 mRectF.bottom = yEndPoint;
                 canvas.drawRect(mRectF, mRectPaint);
+
+                // 显示文字竖线坐标
+                float p = (top * 100) / (float) (mHeight - 2 * yPaddingPoint);
+                String yName = Math.round(p) + "%";
+                canvas.drawText(yName, xPaddingPoint + mMinWSpace * (i + 1), mRectF.top - (float) (yPaddingPoint * 0.5), mTextPaint);
+                // 取圆柱体的x中心点
             }
         }
+
         // 画二阶贝塞尔曲线
         mCubicPath.reset();
         mDstPath.reset();
@@ -214,12 +341,12 @@ public class GraphView extends View {
         fList.addAll(mPointPathList);
         PointF endPointF = new PointF(xEndPoint, yEndPoint);
         fList.add(endPointF);
-        cubicTo(true);
-        drawCubicTo(canvas, true);
+        cubicTo();
+        drawCubicTo(canvas);
     }
 
     // 画二阶贝塞尔曲线 isBezierLine ： 是否画曲线还是直线图
-    private void cubicTo(boolean isBezierLine) {
+    private void cubicTo() {
         mCubicPath.moveTo(fList.get(0).x, fList.get(0).y);
         for (int j = 0; j < fList.size(); j++) {
             PointF pre = fList.get(j);
@@ -243,7 +370,7 @@ public class GraphView extends View {
     }
 
     // isPlayAnim 是否开启动画
-    private void drawCubicTo(Canvas canvas, boolean isPlayAnim) {
+    private void drawCubicTo(Canvas canvas) {
         if (isPlayAnim) {
             mPathMeasure.setPath(mCubicPath, false);
             float length = mPathMeasure.getLength();
@@ -252,6 +379,70 @@ public class GraphView extends View {
             canvas.drawPath(mDstPath, mPathPaint);
         } else {
             canvas.drawPath(mCubicPath, mPathPaint);
+        }
+    }
+
+    /**
+     * 滚动线程
+     */
+    private class FlingRunnable implements Runnable {
+
+        private int mInitX;
+
+        void start(int initX,
+                   int velocityX,
+                   int maxX) {
+            this.mInitX = initX;
+            // 先停止上一次的滚动
+            stop();
+            mScroller.fling(initX, 0, -velocityX,
+                    0, 0, maxX, 0, 0);
+            post(this);
+        }
+
+        @Override
+        public void run() {
+            // 如果已经结束，就不再进行
+            if (!mScroller.computeScrollOffset()) {
+                return;
+            }
+            // 计算偏移量
+            int currX = mScroller.getCurrX();
+            int diffX = mInitX - currX;
+
+            // 用于记录是否超出边界，如果已经超出边界，则不再进行回调，即使滚动还没有完成
+            boolean isEnd = false;
+            if (diffX != 0) {
+                // 超出右边界，进行修正
+                if (getScrollX() + diffX >= mCanvasWidth - mWidth) {
+                    diffX = (int) (mCanvasWidth - mWidth - getScrollX());
+                    isEnd = true;
+                }
+
+                // 超出左边界，进行修正
+                if (getScrollX() <= 0) {
+                    diffX = -getScrollX();
+                    isEnd = true;
+                }
+
+                if (!mScroller.isFinished()) {
+                    scrollBy(diffX, 0);
+                }
+                mInitX = currX;
+            }
+
+            if (!isEnd) {
+                post(this);
+            }
+        }
+
+        /**
+         * 进行停止
+         */
+        void stop() {
+            if (!mScroller.isFinished()) {
+                mScroller.abortAnimation();
+            }
         }
     }
 

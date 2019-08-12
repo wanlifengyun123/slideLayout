@@ -72,7 +72,7 @@ public class GraphView extends View {
     private int mTouchSlop; // 系统所认为的最小滑动距离
     private FlingRunnable mFling;
 
-    private int xSize = 15;
+    private int xSize = 50;
     private int ySize = 9;
 
 
@@ -130,6 +130,7 @@ public class GraphView extends View {
 
     private void initData() {
         mPointPathList = new ArrayList<>();
+        mPointValues = new ArrayList<>();
         fList = new ArrayList<>();
         xPaddingPoint = DisplayUtil.dp2px(20);
         yPaddingPoint = DisplayUtil.dp2px(20);
@@ -193,14 +194,11 @@ public class GraphView extends View {
     private float downY;
     private float curX;
     private float curY;
-    private float dx;
-    private float dy;
-    private boolean isAredayMove;
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
         if (!mScroller.isFinished()) {
-            return false;
+            return true;
         }
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
@@ -210,21 +208,25 @@ public class GraphView extends View {
             case MotionEvent.ACTION_MOVE:
                 curX = event.getX();
                 curY = event.getY();
-                dx = curX - downX;
-                dy = curY - downY;
+                float dx = curX - downX;
+                float dy = curY - downY;
                 if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
                     Log.d("test", "onClick");
-                    getPoint(curX, curY, true);
+                    zoomIn(curX, curY);
                     return true;
+                } else {
+                    if(mCurChart >= 0){
+                        zoomOut();
+                        return true;
+                    }
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                isAredayMove = false;
-                if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
-                    Log.d("test", "onClick");
-                    getPoint(curX, curY, false);
+                if(mCurChart >= 0){
+                    zoomOut();
                     return true;
                 }
+                mCurChart = -1;
                 downX = curX;
                 downY = curY;
                 break;
@@ -232,27 +234,30 @@ public class GraphView extends View {
         return super.dispatchTouchEvent(event);
     }
 
-    private void getPoint(float x, float y, boolean isMove) {
+    private int mCurChart = -1;
+
+    private void zoomIn(float x, float y) {
+        if (mCurChart >= 0) {
+            return;
+        }
         x += getScrollX();
         for (int i = 0; i < mPointValues.size(); i++) {
             ChartPoint chartPoint = mPointValues.get(i);
             if (chartPoint.rectF.contains(x, y)) {
-                if (isMove) {
-                    if (!isAredayMove) {
-                        isAredayMove = true;
-                        chartPoint.rectF.left += mMinWSpace * 0.25;
-                        chartPoint.rectF.right += mMinWSpace * 0.25;
-                        postInvalidate();
-                    }
-                } else {
-                    chartPoint.rectF.left -= mMinWSpace * 0.25;
-                    chartPoint.rectF.right -= mMinWSpace * 0.25;
-                    postInvalidate();
-                    Toast.makeText(getContext(), "x : " + chartPoint.xValue + ", y : " + chartPoint.yValue, Toast.LENGTH_SHORT).show();
-                }
+                mCurChart = i;
+                chartPoint.rectF.left -= mMinWSpace * 0.25;
+                chartPoint.rectF.right += mMinWSpace * 0.25;
+                postInvalidate();
                 return;
             }
         }
+    }
+
+    private void zoomOut() {
+        mPointValues.get(mCurChart).rectF.left += mMinWSpace * 0.25;
+        mPointValues.get(mCurChart).rectF.right -= mMinWSpace * 0.25;
+        mCurChart = -1;
+        postInvalidate();
     }
 
     private float lastX;
@@ -375,6 +380,7 @@ public class GraphView extends View {
         float offsetX = (float) (xPaddingPoint + mMinWSpace * 0.75);
         // 画柱状图
         if (!isInitialized) {
+            mPointValues.clear();
             mPointPathList.clear();
             @SuppressLint("DrawAllocation")
             Random random = new Random();
@@ -384,19 +390,19 @@ public class GraphView extends View {
                 mRectF.right = (float) (mRectF.left + mMinWSpace * 0.5);
                 mRectF.top = yEndPoint - randomNumber;
                 mRectF.bottom = yEndPoint;
-                //canvas.drawRect(mRectF, mRectPaint);
+                canvas.drawRect(mRectF, mRectPaint);
                 // 取圆柱体的x中心点
+                RectF rectF = new RectF(mRectF);
+                mPointValues.add(new ChartPoint(rectF, String.valueOf(i), null, (float) (mRectF.left + mMinWSpace * 0.25), mRectF.top));
                 mPointPathList.add(new PointF((float) (mRectF.left + mMinWSpace * 0.25), mRectF.top));
             }
             isInitialized = true;
         } else {
-            mPointValues = new ArrayList<>();
-            for (int i = 0; i < mPointPathList.size(); i++) {
-                float top = (yEndPoint - mPointPathList.get(i).y);
-                mRectF.left = offsetX + mMinWSpace * i;
-                mRectF.right = (float) (mRectF.left + mMinWSpace * 0.5);
+            for (int i = 0; i < mPointValues.size(); i++) {
+                ChartPoint chartPoint = mPointValues.get(i);
+                float top = (yEndPoint - chartPoint.pointY);
+                mRectF = new RectF(chartPoint.rectF);
                 mRectF.top = yEndPoint - mCurrentValue * top;
-                mRectF.bottom = yEndPoint;
                 canvas.drawRect(mRectF, mRectPaint);
 
                 // 显示文字竖线坐标
@@ -404,9 +410,7 @@ public class GraphView extends View {
                 String yName = Math.round(p) + "%";
                 canvas.drawText(yName, xPaddingPoint + mMinWSpace * (i + 1), mRectF.top - (float) (yPaddingPoint * 0.5), mTextPaint);
                 // 取圆柱体的x中心点
-
-                RectF rectF = new RectF(mRectF);
-                mPointValues.add(new ChartPoint(rectF, String.valueOf(i), yName));
+                mPointValues.get(i).yValue = yName;
             }
         }
 
@@ -529,11 +533,15 @@ public class GraphView extends View {
         RectF rectF;
         String xValue;
         String yValue;
+        float pointX;
+        float pointY;
 
-        ChartPoint(RectF rectF, String xValue, String yValue) {
+        ChartPoint(RectF rectF, String xValue, String yValue, float x, float y) {
             this.rectF = rectF;
             this.yValue = yValue;
             this.xValue = xValue;
+            this.pointX = x;
+            this.pointY = y;
         }
     }
 

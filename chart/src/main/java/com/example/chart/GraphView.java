@@ -13,12 +13,14 @@ import android.graphics.PathMeasure;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Scroller;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
@@ -48,6 +50,7 @@ public class GraphView extends View {
     private Path mCubicPath; // 曲线图路径对象
     private List<PointF> mPointPathList; // 记录柱状图的定点坐标
     private List<PointF> fList; // 记录曲线图的定点坐标
+    private List<ChartPoint> mPointValues; // 记录显示数值大小
 
     private Path mDstPath; // 路径绘制每段截取出来的路径
     private PathMeasure mPathMeasure; //路径测量类
@@ -66,6 +69,7 @@ public class GraphView extends View {
     private int mMinimumVelocity;
     private int mMaximumVelocity;
     private VelocityTracker velocityTracker;
+    private int mTouchSlop; // 系统所认为的最小滑动距离
     private FlingRunnable mFling;
 
     private int xSize = 15;
@@ -92,6 +96,8 @@ public class GraphView extends View {
         ViewConfiguration configuration = ViewConfiguration.get(getContext());
         mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
+        mTouchSlop = configuration.getScaledTouchSlop();
+
         initPaint();
         initData();
         initAnim();
@@ -155,9 +161,9 @@ public class GraphView extends View {
         });
     }
 
-    public void toggleSpace(int space){
+    public void toggleSpace(int space) {
         isCustMinWSpace = !isCustMinWSpace;
-        if(isCustMinWSpace){
+        if (isCustMinWSpace) {
             mMinWSpace = space;
         }
         isInitialized = false;
@@ -181,6 +187,72 @@ public class GraphView extends View {
         super.onLayout(changed, left, top, right, bottom);
         mHeight = getHeight();
         mWidth = getWidth();
+    }
+
+    private float downX;
+    private float downY;
+    private float curX;
+    private float curY;
+    private float dx;
+    private float dy;
+    private boolean isAredayMove;
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (!mScroller.isFinished()) {
+            return false;
+        }
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                downX = event.getX();
+                downY = event.getY();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                curX = event.getX();
+                curY = event.getY();
+                dx = curX - downX;
+                dy = curY - downY;
+                if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
+                    Log.d("test", "onClick");
+                    getPoint(curX, curY, true);
+                    return true;
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+                isAredayMove = false;
+                if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
+                    Log.d("test", "onClick");
+                    getPoint(curX, curY, false);
+                    return true;
+                }
+                downX = curX;
+                downY = curY;
+                break;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    private void getPoint(float x, float y, boolean isMove) {
+        x += getScrollX();
+        for (int i = 0; i < mPointValues.size(); i++) {
+            ChartPoint chartPoint = mPointValues.get(i);
+            if (chartPoint.rectF.contains(x, y)) {
+                if (isMove) {
+                    if (!isAredayMove) {
+                        isAredayMove = true;
+                        chartPoint.rectF.left += mMinWSpace * 0.25;
+                        chartPoint.rectF.right += mMinWSpace * 0.25;
+                        postInvalidate();
+                    }
+                } else {
+                    chartPoint.rectF.left -= mMinWSpace * 0.25;
+                    chartPoint.rectF.right -= mMinWSpace * 0.25;
+                    postInvalidate();
+                    Toast.makeText(getContext(), "x : " + chartPoint.xValue + ", y : " + chartPoint.yValue, Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+        }
     }
 
     private float lastX;
@@ -228,8 +300,6 @@ public class GraphView extends View {
                     int maxX = mCanvasWidth - mWidth;
                     if (maxX > 0) {
                         // 开始 fling
-//                        mScroller.fling(initX, 0, -velocityX,
-//                                0, 0, maxX, 0, 0);
                         mFling.start(initX, velocityX, maxX);
                     }
                 }
@@ -270,10 +340,10 @@ public class GraphView extends View {
 
         int minHSpace = (mHeight - 2 * yPaddingPoint) / (ySize + 1);
         int minWSpace = (mWidth - 2 * xPaddingPoint) / (xSize + 1);
-        if(!isCustMinWSpace){
+        if (!isCustMinWSpace) {
             mMinWSpace = minWSpace;
         } else {
-            if(mMinWSpace < minWSpace){
+            if (mMinWSpace < minWSpace) {
                 mMinWSpace = minWSpace;
             }
         }
@@ -320,6 +390,7 @@ public class GraphView extends View {
             }
             isInitialized = true;
         } else {
+            mPointValues = new ArrayList<>();
             for (int i = 0; i < mPointPathList.size(); i++) {
                 float top = (yEndPoint - mPointPathList.get(i).y);
                 mRectF.left = offsetX + mMinWSpace * i;
@@ -333,6 +404,9 @@ public class GraphView extends View {
                 String yName = Math.round(p) + "%";
                 canvas.drawText(yName, xPaddingPoint + mMinWSpace * (i + 1), mRectF.top - (float) (yPaddingPoint * 0.5), mTextPaint);
                 // 取圆柱体的x中心点
+
+                RectF rectF = new RectF(mRectF);
+                mPointValues.add(new ChartPoint(rectF, String.valueOf(i), yName));
             }
         }
 
@@ -448,6 +522,18 @@ public class GraphView extends View {
             if (!mScroller.isFinished()) {
                 mScroller.abortAnimation();
             }
+        }
+    }
+
+    class ChartPoint {
+        RectF rectF;
+        String xValue;
+        String yValue;
+
+        ChartPoint(RectF rectF, String xValue, String yValue) {
+            this.rectF = rectF;
+            this.yValue = yValue;
+            this.xValue = xValue;
         }
     }
 

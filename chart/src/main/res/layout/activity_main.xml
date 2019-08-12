@@ -5,23 +5,23 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <Button
-        android:id="@+id/button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Multi Chart"
-        tools:ignore="HardcodedText"
-        android:onClick="multiClick"/>
+    <!--<Button-->
+        <!--android:id="@+id/button"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_margin="16dp"-->
+        <!--android:text="Multi Chart"-->
+        <!--tools:ignore="HardcodedText"-->
+        <!--android:onClick="multiClick"/>-->
 
-    <Button
-        android:id="@+id/button2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Line Chart"
-        tools:ignore="HardcodedText"
-        android:onClick="lineClick"/>
+    <!--<Button-->
+        <!--android:id="@+id/button2"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_margin="16dp"-->
+        <!--android:text="Line Chart"-->
+        <!--tools:ignore="HardcodedText"-->
+        <!--android:onClick="lineClick"/>-->
 
 
     <Button
@@ -33,22 +33,22 @@
         tools:ignore="HardcodedText"
         android:onClick="graphClick"/>
 
-    <Button
-        android:id="@+id/button4"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Table Chart"
-        tools:ignore="HardcodedText"
-        android:onClick="tableClick"/>
+    <!--<Button-->
+        <!--android:id="@+id/button4"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_margin="16dp"-->
+        <!--android:text="Table Chart"-->
+        <!--tools:ignore="HardcodedText"-->
+        <!--android:onClick="tableClick"/>-->
 
-    <Button
-        android:id="@+id/button5"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Radar Chart"
-        tools:ignore="HardcodedText"
-        android:onClick="radarChartClick"/>
+    <!--<Button-->
+        <!--android:id="@+id/button5"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_margin="16dp"-->
+        <!--android:text="Radar Chart"-->
+        <!--tools:ignore="HardcodedText"-->
+        <!--android:onClick="radarChartClick"/>-->
 
 </LinearLayout>

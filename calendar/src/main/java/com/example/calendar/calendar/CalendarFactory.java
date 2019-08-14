@@ -2,6 +2,7 @@ package com.example.calendar.calendar;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -67,7 +68,8 @@ public class CalendarFactory {
         String[] chinaDate = ChinaDate.getChinaDate(year, month, day);
         bean.chinaMonth = chinaDate[0];
         bean.chinaDay = chinaDate[1];
-
+        int[] ymd = CalendarUtil.getYMD(new Date(System.currentTimeMillis()));
+        bean.isToday = bean.year == ymd[0] && bean.moth == ymd[1] && bean.day == ymd[2];
         return bean;
     }
 

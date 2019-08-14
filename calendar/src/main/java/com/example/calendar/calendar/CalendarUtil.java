@@ -39,4 +39,15 @@ public class CalendarUtil {
         return new int[]{cal.get(Calendar.YEAR),cal.get(Calendar.MONTH)+1,cal.get(Calendar.DATE)};
     }
 
+    public static void main(String[] args) {
+        int[] ymd = CalendarUtil.getYMD(new Date(System.currentTimeMillis()));
+        System.out.println("y:" +ymd[0] + ", m:" + ymd[1] + ", d:" + ymd[2]);
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(new Date(System.currentTimeMillis()));
+        cal.set(ymd[0], ymd[1] - 9, ymd[2]);
+        System.out.println("y:" +cal.get(Calendar.YEAR) + ", m:" +( cal.get(Calendar.MONTH)+1) + ", d:" + cal.get(Calendar.DATE));
+
+    }
+
 }

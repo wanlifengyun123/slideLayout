@@ -7,6 +7,8 @@ public class CalendarBean {
     public int day;
     public int week;
 
+    public boolean isToday;
+
     //-1,0,1
     public int mothFlag;
 
